@@ -7,7 +7,7 @@ import {
   DialogContent, 
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { 
   Tooltip, 
   TooltipContent, 
@@ -227,15 +227,17 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
               <div className="flex items-center gap-3">
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => setIsSidebarOpen(true)} 
-                        className="rounded-full hover:bg-white/5 transition-all duration-300"
-                      >
-                        <Info size={20} />
-                      </Button>
+                    <TooltipTrigger 
+                      render={
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => setIsSidebarOpen(true)} 
+                          className="rounded-full hover:bg-white/5 transition-all duration-300"
+                        />
+                      }
+                    >
+                      <Info size={20} />
                     </TooltipTrigger>
                     <TooltipContent>Note Intelligence</TooltipContent>
                   </Tooltip>
@@ -245,10 +247,12 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors">
-                        <X size={20} />
-                      </Button>
+                    <TooltipTrigger 
+                      render={
+                        <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors" />
+                      }
+                    >
+                      <X size={20} />
                     </TooltipTrigger>
                     <TooltipContent>Close Editor</TooltipContent>
                   </Tooltip>
@@ -259,14 +263,14 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
         </AnimatePresence>
 
         {/* Main Body - Split into Canvas and Sidebar */}
-        <div className="flex-1 flex flex-row overflow-hidden relative">
+        <div className="flex-1 flex flex-row overflow-hidden relative h-full">
           
           {/* Canvas Area */}
           <div className="flex-1 flex flex-col min-w-0 relative h-full">
             <ScrollArea className="flex-1 w-full h-full">
-              <div className="max-w-4xl mx-auto px-10 pt-4 pb-40 transition-all duration-700">
+              <div className="max-w-4xl mx-auto px-10 pt-4 pb-40 transition-all duration-700 h-full flex flex-col">
                 <LayoutGroup>
-                  <motion.div layout className="space-y-8 w-full">
+                  <motion.div layout className="space-y-8 w-full flex-1">
                     <input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -286,7 +290,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                       </div>
                     </div>
 
-                    <div className="pt-6 w-full h-full">
+                    <div className="pt-6 w-full flex-1">
                       <AnimatePresence mode="wait">
                         {viewMode === 'edit' ? (
                           <motion.div
@@ -295,14 +299,14 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.3 }}
-                            className="w-full"
+                            className="w-full h-full"
                           >
                             <textarea
                               ref={textareaRef}
                               value={content}
                               onChange={(e) => handleContentChange(e.target.value)}
                               placeholder="Start writing something amazing..."
-                              className="w-full min-h-[500px] resize-none bg-transparent border-none p-0 focus:outline-none text-xl leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
+                              className="w-full min-h-[500px] h-full resize-none bg-transparent border-none p-0 focus:outline-none text-xl leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
                               autoFocus
                             />
                           </motion.div>
@@ -313,7 +317,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.3 }}
-                            className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg w-full break-words"
+                            className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg w-full break-words pb-20"
                           >
                             <ReactMarkdown>{content || '*No content to preview yet.*'}</ReactMarkdown>
                           </motion.div>
@@ -339,29 +343,33 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                   <TooltipProvider delayDuration={0}>
                     <div className="flex items-center gap-1 px-1">
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant={viewMode === 'edit' ? 'default' : 'ghost'} 
-                            size="icon" 
-                            onClick={() => setViewMode('edit')} 
-                            className="h-10 w-10 rounded-xl"
-                          >
-                            <Edit3 size={18} />
-                          </Button>
+                        <TooltipTrigger 
+                          render={
+                            <Button 
+                              variant={viewMode === 'edit' ? 'default' : 'ghost'} 
+                              size="icon" 
+                              onClick={() => setViewMode('edit')} 
+                              className="h-10 w-10 rounded-xl"
+                            />
+                          }
+                        >
+                          <Edit3 size={18} />
                         </TooltipTrigger>
                         <TooltipContent>Edit Mode</TooltipContent>
                       </Tooltip>
 
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant={viewMode === 'preview' ? 'default' : 'ghost'} 
-                            size="icon" 
-                            onClick={() => setViewMode('preview')} 
-                            className="h-10 w-10 rounded-xl"
-                          >
-                            <Eye size={18} />
-                          </Button>
+                        <TooltipTrigger 
+                          render={
+                            <Button 
+                              variant={viewMode === 'preview' ? 'default' : 'ghost'} 
+                              size="icon" 
+                              onClick={() => setViewMode('preview')} 
+                              className="h-10 w-10 rounded-xl"
+                            />
+                          }
+                        >
+                          <Eye size={18} />
                         </TooltipTrigger>
                         <TooltipContent>Preview Mode</TooltipContent>
                       </Tooltip>
@@ -372,20 +380,32 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                     {viewMode === 'edit' && (
                       <div className="flex items-center gap-1 px-1">
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Bold size={18} /></Button>
+                          <TooltipTrigger 
+                            render={
+                              <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10" />
+                            }
+                          >
+                            <Bold size={18} />
                           </TooltipTrigger>
                           <TooltipContent>Bold</TooltipContent>
                         </Tooltip>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Italic size={18} /></Button>
+                          <TooltipTrigger 
+                            render={
+                              <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10" />
+                            }
+                          >
+                            <Italic size={18} />
                           </TooltipTrigger>
                           <TooltipContent>Italic</TooltipContent>
                         </Tooltip>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10"><List size={18} /></Button>
+                          <TooltipTrigger 
+                            render={
+                              <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10" />
+                            }
+                          >
+                            <List size={18} />
                           </TooltipTrigger>
                           <TooltipContent>Bullet List</TooltipContent>
                         </Tooltip>
@@ -396,30 +416,34 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
                     <div className="flex items-center gap-1 px-1">
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={handleUndo} 
-                            disabled={!canUndo}
-                            className="h-10 w-10 rounded-xl disabled:opacity-20"
-                          >
-                            <Undo2 size={18} />
-                          </Button>
+                        <TooltipTrigger 
+                          render={
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={handleUndo} 
+                              disabled={!canUndo}
+                              className="h-10 w-10 rounded-xl disabled:opacity-20"
+                            />
+                          }
+                        >
+                          <Undo2 size={18} />
                         </TooltipTrigger>
                         <TooltipContent>Undo</TooltipContent>
                       </Tooltip>
 
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={copyToClipboard} 
-                            className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
-                          >
-                            {copied ? <Check size={18} /> : <Copy size={18} />}
-                          </Button>
+                        <TooltipTrigger 
+                          render={
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={copyToClipboard} 
+                              className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
+                            />
+                          }
+                        >
+                          {copied ? <Check size={18} /> : <Copy size={18} />}
                         </TooltipTrigger>
                         <TooltipContent>{copied ? 'Copied!' : 'Copy Content'}</TooltipContent>
                       </Tooltip>
