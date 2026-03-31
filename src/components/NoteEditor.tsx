@@ -194,7 +194,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent 
         showCloseButton={false} 
-        className="max-w-6xl w-[95vw] h-[85vh] p-0 overflow-hidden border border-white/10 bg-background/95 backdrop-blur-2xl flex flex-col rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] m-0 select-none"
+        className="max-w-7xl w-[95vw] h-[85vh] p-0 overflow-hidden border border-white/10 bg-background/95 backdrop-blur-2xl flex flex-col rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] m-0 select-none"
       >
         
         {/* Top Navigation - Full Width - Hidden when sidebar is open */}
@@ -263,10 +263,10 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
           
           {/* Canvas Area */}
           <div className="flex-1 flex flex-col min-w-0 relative h-full">
-            <ScrollArea className="flex-1 w-full">
-              <div className="max-w-3xl mx-auto px-10 pt-20 pb-40 transition-all duration-700">
+            <ScrollArea className="flex-1 w-full h-full">
+              <div className="max-w-4xl mx-auto px-10 pt-4 pb-40 transition-all duration-700">
                 <LayoutGroup>
-                  <motion.div layout className="space-y-8">
+                  <motion.div layout className="space-y-8 w-full">
                     <input
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
@@ -286,7 +286,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                       </div>
                     </div>
 
-                    <div className="min-h-[40vh] pt-6">
+                    <div className="pt-6 w-full h-full">
                       <AnimatePresence mode="wait">
                         {viewMode === 'edit' ? (
                           <motion.div
@@ -295,13 +295,14 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.3 }}
+                            className="w-full"
                           >
                             <textarea
                               ref={textareaRef}
                               value={content}
                               onChange={(e) => handleContentChange(e.target.value)}
                               placeholder="Start writing something amazing..."
-                              className="w-full min-h-[450px] resize-none bg-transparent border-none p-0 focus:outline-none text-xl leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
+                              className="w-full min-h-[500px] resize-none bg-transparent border-none p-0 focus:outline-none text-xl leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
                               autoFocus
                             />
                           </motion.div>
@@ -312,7 +313,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.3 }}
-                            className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg"
+                            className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg w-full break-words"
                           >
                             <ReactMarkdown>{content || '*No content to preview yet.*'}</ReactMarkdown>
                           </motion.div>
@@ -459,80 +460,99 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                   </div>
 
                   <ScrollArea className="flex-1 h-full">
-                    <div className="max-w-4xl mx-auto p-12 space-y-16 pb-32">
-                      <section className="space-y-8">
+                    <div className="max-w-6xl mx-auto px-6 py-16 space-y-24 pb-32">
+                      {/* Performance Section */}
+                      <section className="space-y-12 w-full">
                         <div className="flex items-center gap-2 text-primary/60">
                           <Zap size={16} />
                           <h3 className="text-[10px] font-black uppercase tracking-widest">Performance Insights</h3>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                          <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-1">
-                            <span className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-wider">Total Words</span>
-                            <p className="text-4xl font-black tracking-tighter">{stats.words}</p>
-                          </div>
-                          <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-1">
-                            <span className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-wider">Characters</span>
-                            <p className="text-4xl font-black tracking-tighter">{stats.chars}</p>
-                          </div>
-                          <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-1">
-                            <span className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-wider">Reading Est.</span>
-                            <p className="text-4xl font-black tracking-tighter">{stats.readingTime}m</p>
+                        <div className="flex justify-center w-full">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 w-full max-w-5xl">
+                            <div className="flex flex-col items-center justify-center text-center relative group p-6">
+                              <div className="absolute inset-0 bg-primary/[0.03] rounded-3xl blur-[30px] opacity-100 transition-opacity duration-500 border border-white/5 backdrop-blur-[1px]" />
+                              <span className="text-[9px] font-bold text-muted-foreground/20 uppercase tracking-[0.2em] mb-3 z-10">Total Words</span>
+                              <p className="text-6xl font-black tracking-tighter group-hover:text-primary transition-all duration-500 leading-none z-10 relative">
+                                {stats.words}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-center justify-center text-center relative group p-6">
+                              <div className="absolute inset-0 bg-primary/[0.03] rounded-3xl blur-[30px] opacity-100 transition-opacity duration-500 border border-white/5 backdrop-blur-[1px]" />
+                              <span className="text-[9px] font-bold text-muted-foreground/20 uppercase tracking-[0.2em] mb-3 z-10">Characters</span>
+                              <p className="text-6xl font-black tracking-tighter group-hover:text-primary transition-all duration-500 leading-none z-10 relative">
+                                {stats.chars}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-center justify-center text-center relative group p-6">
+                              <div className="absolute inset-0 bg-primary/[0.03] rounded-3xl blur-[30px] opacity-100 transition-opacity duration-500 border border-white/5 backdrop-blur-[1px]" />
+                              <span className="text-[9px] font-bold text-muted-foreground/20 uppercase tracking-[0.2em] mb-3 z-10">Reading Est.</span>
+                              <p className="text-6xl font-black tracking-tighter group-hover:text-primary transition-all duration-500 leading-none flex items-baseline z-10 relative">
+                                {stats.readingTime}<span className="text-xl ml-1 text-muted-foreground/20 font-black">m</span>
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </section>
 
-                      <section className="space-y-8">
+                      {/* Organization Section */}
+                      <section className="space-y-12 w-full">
                         <div className="flex items-center gap-2 text-primary/60">
                           <Hash size={16} />
                           <h3 className="text-[10px] font-black uppercase tracking-widest">Organizational Layer</h3>
                         </div>
-                        <div className="space-y-6">
-                          <div className="flex flex-wrap gap-3">
-                            {tags.map((tag) => (
+                        <div className="flex flex-col items-center space-y-10 w-full">
+                          <div className="flex flex-wrap justify-center gap-4 max-w-3xl">
+                            {tags.length > 0 ? tags.map((tag) => (
                               <Badge 
                                 key={tag}
-                                className="bg-white/5 text-muted-foreground hover:bg-primary/10 hover:text-primary border border-white/5 hover:border-primary/20 rounded-2xl px-5 py-2 text-xs font-bold transition-all flex items-center gap-2 group"
+                                className="bg-white/[0.03] text-muted-foreground hover:bg-primary/10 hover:text-primary border border-white/5 hover:border-primary/20 rounded-2xl px-8 py-3 text-sm font-bold transition-all flex items-center gap-3 group"
                               >
                                 {tag}
                                 <X 
-                                  size={12} 
-                                  className="cursor-pointer opacity-30 group-hover:opacity-100 hover:text-destructive transition-all" 
+                                  size={14} 
+                                  className="cursor-pointer opacity-20 group-hover:opacity-100 hover:text-destructive transition-all" 
                                   onClick={() => removeTag(tag)}
                                 />
                               </Badge>
-                            ))}
+                            )) : (
+                              <span className="text-sm text-muted-foreground/20 italic font-medium">No collections added yet</span>
+                            )}
                           </div>
-                          <div className="relative max-w-md">
-                            <TagIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/20" size={16} />
+                          <div className="relative w-full max-w-md group">
+                            <TagIcon className="absolute left-6 top-1/2 -translate-y-1/2 text-muted-foreground/20 group-focus-within:text-primary/40 transition-colors" size={20} />
                             <input
                               value={tagInput}
                               onChange={(e) => setTagInput(e.target.value)}
                               onKeyDown={addTag}
                               placeholder="Add to collection..."
-                              className="w-full bg-white/[0.03] border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/10"
+                              className="w-full bg-white/[0.02] border border-white/5 rounded-[2rem] pl-16 pr-8 py-6 text-base focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/10 text-center font-medium"
                             />
                           </div>
                         </div>
                       </section>
 
-                      <section className="space-y-8">
+                      {/* Chronology Section */}
+                      <section className="space-y-12 w-full">
                         <div className="flex items-center gap-2 text-primary/60">
                           <History size={16} />
                           <h3 className="text-[10px] font-black uppercase tracking-widest">Historical Chronology</h3>
                         </div>
-                        <div className="space-y-8 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-white/5">
-                          <div className="flex items-start gap-6 relative">
-                            <div className="size-2 rounded-full bg-primary mt-2 shrink-0 shadow-[0_0_12px_rgba(var(--primary-rgb),0.6)] z-10" />
-                            <div className="space-y-1">
-                              <p className="text-sm font-bold text-foreground/90">Last Modification Cycle</p>
-                              <p className="text-xs text-muted-foreground/40 font-medium tracking-tight">{formattedLastModified}</p>
+                        <div className="flex justify-center w-full">
+                          <div className="space-y-16 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-white/5 max-w-md w-full ml-4">
+                            <div className="flex items-start gap-10 relative group">
+                              <div className="size-3 rounded-full bg-primary mt-1.5 shrink-0 shadow-[0_0_20px_rgba(var(--primary-rgb),0.8)] z-10 group-hover:scale-150 transition-transform duration-500" />
+                              <div className="space-y-2">
+                                <p className="text-lg font-bold text-foreground/90 group-hover:text-primary transition-colors">Last Modification Cycle</p>
+                                <p className="text-[11px] text-muted-foreground/40 font-black tracking-[0.2em] uppercase">{formattedLastModified}</p>
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-start gap-6 relative">
-                            <div className="size-2 rounded-full bg-white/20 mt-2 shrink-0 z-10" />
-                            <div className="space-y-1">
-                              <p className="text-sm font-bold text-foreground/70">Initial Entry Created</p>
-                              <p className="text-xs text-muted-foreground/30 font-medium tracking-tight">{formattedFullCreatedAt}</p>
+                            
+                            <div className="flex items-start gap-10 relative group opacity-40 hover:opacity-100 transition-all duration-500">
+                              <div className="size-3 rounded-full bg-white/20 mt-1.5 shrink-0 z-10 group-hover:bg-white/40 group-hover:scale-150 transition-all duration-500" />
+                              <div className="space-y-2">
+                                <p className="text-lg font-bold text-foreground/70 group-hover:text-foreground transition-colors">Initial Entry Created</p>
+                                <p className="text-[11px] text-muted-foreground/30 font-black tracking-[0.2em] uppercase">{formattedFullCreatedAt}</p>
+                              </div>
                             </div>
                           </div>
                         </div>
