@@ -2,30 +2,30 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNoteStore } from '@/store/useNoteStore';
-import { 
-  Dialog, 
-  DialogContent, 
+import {
+  Dialog,
+  DialogContent,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { 
-  Tooltip, 
-  TooltipContent, 
-  TooltipProvider, 
-  TooltipTrigger 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
 } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
-import { 
-  X, 
-  Tag as TagIcon, 
-  Eye, 
-  Edit3, 
-  Check, 
-  Undo2, 
+import {
+  X,
+  Tag as TagIcon,
+  Eye,
+  Edit3,
+  Check,
+  Undo2,
   ChevronRight,
-  Copy, 
-  Clock, 
+  Copy,
+  Clock,
   Bold,
   Italic,
   List,
@@ -57,11 +57,11 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const [tags, setTags] = useState<string[]>(note?.tags || []);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(note ? new Date(note.updatedAt) : null);
-  
+
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  
+
   const [history, setHistory] = useState<string[]>(note ? [note.content] : []);
   const [canUndo, setCanUndo] = useState(false);
 
@@ -81,9 +81,9 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   useEffect(() => {
     if (!noteId || !isOpen || !note) return;
 
-    if (title === note.title && 
-        content === note.content && 
-        JSON.stringify(tags) === JSON.stringify(note.tags)) {
+    if (title === note.title &&
+      content === note.content &&
+      JSON.stringify(tags) === JSON.stringify(note.tags)) {
       return;
     }
 
@@ -96,7 +96,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
-    
+
     const lastEntry = history[history.length - 1];
     if (newContent !== lastEntry) {
       setHistory(prev => {
@@ -149,10 +149,10 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
   const formattedCreatedAt = useMemo(() => {
     const dateSource = note?.createdAt || 0;
-    return dateSource ? new Date(dateSource).toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
+    return dateSource ? new Date(dateSource).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
     }) : 'Just now';
   }, [note?.createdAt]);
 
@@ -178,7 +178,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
     const newContent = `${before}${prefix}${selection}${suffix}${after}`;
     handleContentChange(newContent);
-    
+
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(
@@ -192,15 +192,15 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent 
-        showCloseButton={false} 
+      <DialogContent
+        showCloseButton={false}
         className="max-w-7xl w-[95vw] h-[85vh] p-0 overflow-hidden border border-white/10 bg-background/95 backdrop-blur-2xl flex flex-col rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] m-0 select-none"
       >
-        
+
         {/* Top Navigation - Full Width - Hidden when sidebar is open */}
         <AnimatePresence>
           {!isSidebarOpen && (
-            <motion.div 
+            <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 80, opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -227,12 +227,12 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
               <div className="flex items-center gap-3">
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger 
+                    <TooltipTrigger
                       render={
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => setIsSidebarOpen(true)} 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setIsSidebarOpen(true)}
                           className="rounded-full hover:bg-white/5 transition-all duration-300"
                         />
                       }
@@ -247,7 +247,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger 
+                    <TooltipTrigger
                       render={
                         <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors" />
                       }
@@ -264,7 +264,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
         {/* Main Body - Split into Canvas and Sidebar */}
         <div className="flex-1 flex flex-row overflow-hidden relative h-full">
-          
+
           {/* Canvas Area */}
           <div className="flex-1 flex flex-col min-w-0 relative h-full">
             <ScrollArea className="flex-1 w-full h-full">
@@ -277,7 +277,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                       placeholder="Untitled Note"
                       className="w-full text-5xl font-bold bg-transparent border-none p-0 focus:outline-none placeholder:text-muted-foreground/10 tracking-tight text-foreground selection:bg-primary/30"
                     />
-                    
+
                     <div className="flex items-center gap-5 text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.3em]">
                       <div className="flex items-center gap-2">
                         <Calendar size={14} className="text-primary/40" />
@@ -333,22 +333,22 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
           {/* Floating Dock Toolbar - Hidden when sidebar is open */}
           <AnimatePresence>
             {!isSidebarOpen && (
-              <motion.div 
+              <motion.div
                 initial={{ y: 100, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 100, opacity: 0 }}
                 className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
               >
                 <div className="flex items-center gap-1.5 p-2 rounded-2xl glass border-white/10 shadow-2xl pointer-events-auto">
-                  <TooltipProvider delayDuration={0}>
+                  <TooltipProvider>
                     <div className="flex items-center gap-1 px-1">
                       <Tooltip>
-                        <TooltipTrigger 
+                        <TooltipTrigger
                           render={
-                            <Button 
-                              variant={viewMode === 'edit' ? 'default' : 'ghost'} 
-                              size="icon" 
-                              onClick={() => setViewMode('edit')} 
+                            <Button
+                              variant={viewMode === 'edit' ? 'default' : 'ghost'}
+                              size="icon"
+                              onClick={() => setViewMode('edit')}
                               className="h-10 w-10 rounded-xl"
                             />
                           }
@@ -359,12 +359,12 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                       </Tooltip>
 
                       <Tooltip>
-                        <TooltipTrigger 
+                        <TooltipTrigger
                           render={
-                            <Button 
-                              variant={viewMode === 'preview' ? 'default' : 'ghost'} 
-                              size="icon" 
-                              onClick={() => setViewMode('preview')} 
+                            <Button
+                              variant={viewMode === 'preview' ? 'default' : 'ghost'}
+                              size="icon"
+                              onClick={() => setViewMode('preview')}
                               className="h-10 w-10 rounded-xl"
                             />
                           }
@@ -380,7 +380,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                     {viewMode === 'edit' && (
                       <div className="flex items-center gap-1 px-1">
                         <Tooltip>
-                          <TooltipTrigger 
+                          <TooltipTrigger
                             render={
                               <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10" />
                             }
@@ -390,7 +390,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                           <TooltipContent>Bold</TooltipContent>
                         </Tooltip>
                         <Tooltip>
-                          <TooltipTrigger 
+                          <TooltipTrigger
                             render={
                               <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10" />
                             }
@@ -400,7 +400,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                           <TooltipContent>Italic</TooltipContent>
                         </Tooltip>
                         <Tooltip>
-                          <TooltipTrigger 
+                          <TooltipTrigger
                             render={
                               <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10" />
                             }
@@ -416,12 +416,12 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
                     <div className="flex items-center gap-1 px-1">
                       <Tooltip>
-                        <TooltipTrigger 
+                        <TooltipTrigger
                           render={
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={handleUndo} 
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={handleUndo}
                               disabled={!canUndo}
                               className="h-10 w-10 rounded-xl disabled:opacity-20"
                             />
@@ -433,12 +433,12 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                       </Tooltip>
 
                       <Tooltip>
-                        <TooltipTrigger 
+                        <TooltipTrigger
                           render={
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={copyToClipboard} 
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={copyToClipboard}
                               className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
                             />
                           }
@@ -527,14 +527,14 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                         <div className="flex flex-col items-center space-y-10 w-full">
                           <div className="flex flex-wrap justify-center gap-4 max-w-3xl">
                             {tags.length > 0 ? tags.map((tag) => (
-                              <Badge 
+                              <Badge
                                 key={tag}
                                 className="bg-white/[0.03] text-muted-foreground hover:bg-primary/10 hover:text-primary border border-white/5 hover:border-primary/20 rounded-2xl px-8 py-3 text-sm font-bold transition-all flex items-center gap-3 group"
                               >
                                 {tag}
-                                <X 
-                                  size={14} 
-                                  className="cursor-pointer opacity-20 group-hover:opacity-100 hover:text-destructive transition-all" 
+                                <X
+                                  size={14}
+                                  className="cursor-pointer opacity-20 group-hover:opacity-100 hover:text-destructive transition-all"
                                   onClick={() => removeTag(tag)}
                                 />
                               </Badge>
@@ -570,7 +570,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                                 <p className="text-[11px] text-muted-foreground/40 font-black tracking-[0.2em] uppercase">{formattedLastModified}</p>
                               </div>
                             </div>
-                            
+
                             <div className="flex items-start gap-10 relative group opacity-40 hover:opacity-100 transition-all duration-500">
                               <div className="size-3 rounded-full bg-white/20 mt-1.5 shrink-0 z-10 group-hover:bg-white/40 group-hover:scale-150 transition-all duration-500" />
                               <div className="space-y-2">
