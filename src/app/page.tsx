@@ -155,6 +155,7 @@ export default function Home() {
       </div>
 
       <NoteEditor 
+        key={editingNoteId || 'new'}
         noteId={editingNoteId} 
         isOpen={!!editingNoteId} 
         onClose={() => setEditingNoteId(null)} 
