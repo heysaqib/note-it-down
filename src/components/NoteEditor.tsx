@@ -1,25 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNoteStore } from '@/store/useNoteStore';
 import { 
   Dialog, 
   DialogContent, 
-  DialogHeader, 
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import ReactMarkdown from 'react-markdown';
-import { X, Tag as TagIcon, Eye, Edit3, Save, Loader2, Check } from 'lucide-react';
+import { 
+  X, 
+  Tag as TagIcon, 
+  Eye, 
+  Edit3, 
+  Check, 
+  Undo2, 
+  ChevronRight,
+  Columns, 
+  Maximize2, 
+  Minimize2, 
+  Copy, 
+  Clock, 
+  Type,
+  Bold,
+  Italic,
+  List,
+  Link as LinkIcon,
+  Quote,
+  Loader2,
+  Info,
+  Calendar,
+  Zap,
+  History,
+  Hash
+} from 'lucide-react';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface NoteEditorProps {
   noteId: string | null;
   isOpen: boolean;
   onClose: () => void;
 }
+
+type ViewMode = 'edit' | 'preview' | 'split';
 
 export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const { notes, updateNote } = useNoteStore();
@@ -32,8 +64,15 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  
+  const [viewMode, setViewMode] = useState<ViewMode>('edit');
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const [history, setHistory] = useState<string[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
 
-  // Synchronize local state with the selected note
   useEffect(() => {
     if (note) {
       setTitle(note.title);
@@ -41,10 +80,12 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
       setTags(note.tags);
       setLastSaved(new Date(note.updatedAt));
       setSaveError(null);
+      setHistory([note.content]);
+      setCanUndo(false);
     }
   }, [noteId, note]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (noteId) {
       setIsSaving(true);
       setSaveError(null);
@@ -53,16 +94,14 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
       if (success) {
         setLastSaved(new Date());
       } else {
-        setSaveError('Failed to save');
+        setSaveError('Sync failed');
       }
     }
-  };
+  }, [noteId, title, content, tags, updateNote]);
 
-  // Debounced auto-save
   useEffect(() => {
     if (!noteId || !isOpen || !note) return;
 
-    // Don't auto-save if the values haven't changed from the current note in store
     if (title === note.title && 
         content === note.content && 
         JSON.stringify(tags) === JSON.stringify(note.tags)) {
@@ -74,8 +113,32 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
     }, 1500);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, content, tags, noteId, isOpen]);
+  }, [title, content, tags, noteId, isOpen, note, handleSave]);
+
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+    setSaveError(null);
+    
+    const lastEntry = history[history.length - 1];
+    if (newContent !== lastEntry) {
+      setHistory(prev => {
+        const newHistory = [...prev, newContent].slice(-50);
+        setCanUndo(true);
+        return newHistory;
+      });
+    }
+  };
+
+  const handleUndo = () => {
+    if (history.length > 1) {
+      const newHistory = [...history];
+      newHistory.pop();
+      const previousContent = newHistory[newHistory.length - 1];
+      setContent(previousContent);
+      setHistory(newHistory);
+      setCanUndo(newHistory.length > 1);
+    }
+  };
 
   const addTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -93,140 +156,445 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
     setTags(newTags);
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const stats = useMemo(() => {
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const chars = content.length;
+    const readingTime = Math.ceil(words / 200);
+    return { words, chars, readingTime };
+  }, [content]);
+
+  const insertMarkdown = (prefix: string, suffix: string = '') => {
+    const textarea = document.querySelector('textarea');
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const before = text.substring(0, start);
+    const selection = text.substring(start, end);
+    const after = text.substring(end);
+
+    const newContent = `${before}${prefix}${selection}${suffix}${after}`;
+    handleContentChange(newContent);
+    
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + prefix.length,
+        end + prefix.length
+      );
+    }, 0);
+  };
+
   if (!note && isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[85vh] p-0 overflow-hidden glass border-none gap-0 flex flex-col rounded-3xl">
-        <div className="flex-1 flex flex-col min-h-0">
-          <DialogHeader className="p-8 pb-4 border-b border-white/5">
-            <div className="flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <Input
-                  value={title}
-                  onChange={(e) => {
-                    setTitle(e.target.value);
-                    setSaveError(null);
-                  }}
-                  placeholder="Note Title"
-                  className="text-3xl font-black bg-transparent border-none p-0 focus-visible:ring-0 placeholder:text-muted-foreground/30 tracking-tight"
-                />
-                <div className="flex items-center gap-4">
-                   <div className="flex flex-col items-end">
-                     <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      {isSaving ? (
-                        <>
-                          <Loader2 size={10} className="animate-spin text-primary" />
-                          Saving...
-                        </>
-                      ) : saveError ? (
-                        <>
-                          <X size={10} className="text-destructive" />
-                          <span className="text-destructive">{saveError}</span>
-                        </>
-                      ) : (
-                        <>
-                          <Check size={10} className="text-green-500" />
-                          Saved
-                        </>
+      <DialogContent className="max-w-[100vw] w-full h-[100vh] p-0 overflow-hidden border-none bg-background/80 backdrop-blur-3xl gap-0 flex flex-row rounded-none shadow-none m-0 select-none">
+        
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 relative h-full">
+          
+          {/* Top Navigation */}
+          <div className={cn(
+            "h-16 flex items-center justify-between px-8 border-b border-white/5 transition-opacity duration-500 z-50",
+            isFocusMode && "opacity-0 pointer-events-none"
+          )}>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-white/10">
+                <X size={20} />
+              </Button>
+              <div className="h-4 w-px bg-white/10" />
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                {isSaving ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin text-primary" />
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Syncing</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      {lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Draft'}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+                      className={cn("rounded-full transition-colors", isSidebarOpen && "bg-primary/10 text-primary")}
+                    >
+                      <Info size={20} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Note Details</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Button variant="ghost" size="icon" onClick={() => setIsFocusMode(true)} className="rounded-full">
+                <Maximize2 size={20} />
+              </Button>
+            </div>
+          </div>
+
+          {/* Editor Canvas */}
+          <ScrollArea className="flex-1 w-full">
+            <div className={cn(
+              "max-w-4xl mx-auto px-8 pt-16 pb-32 transition-all duration-700",
+              isFocusMode ? "pt-24" : "pt-16"
+            )}>
+              <LayoutGroup>
+                <motion.div layout className="space-y-8">
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Untitled Note"
+                    className="w-full text-6xl font-black bg-transparent border-none p-0 focus:outline-none placeholder:text-muted-foreground/10 tracking-tighter text-foreground selection:bg-primary/30"
+                  />
+                  
+                  <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={14} />
+                      {new Date(note?.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </div>
+                    <div className="size-1 rounded-full bg-white/10" />
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={14} />
+                      {stats.readingTime} min read
+                    </div>
+                  </div>
+
+                  <div className="min-h-[60vh]">
+                    <AnimatePresence mode="wait">
+                      {viewMode === 'edit' && (
+                        <motion.div
+                          key="edit"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <textarea
+                            value={content}
+                            onChange={(e) => handleContentChange(e.target.value)}
+                            placeholder="Start writing something amazing..."
+                            className="w-full min-h-[500px] resize-none bg-transparent border-none p-0 focus:outline-none text-xl leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
+                            autoFocus
+                          />
+                        </motion.div>
                       )}
-                     </div>
-                     {lastSaved && !isSaving && (
-                       <span className="text-[8px] text-muted-foreground/50 tabular-nums">
-                         {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                       </span>
-                     )}
-                   </div>
-                   
-                   <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="h-8 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
-                   >
-                     <Save size={14} />
-                     Save Now
-                   </Button>
 
-                   <button 
-                    onClick={onClose}
-                    className="p-2 hover:bg-white/5 rounded-xl transition-colors text-muted-foreground hover:text-foreground"
-                   >
-                     <X size={20} />
-                   </button>
-                </div>
-              </div>
+                      {viewMode === 'preview' && (
+                        <motion.div
+                          key="preview"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          transition={{ duration: 0.3 }}
+                          className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-black prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg"
+                        >
+                          <ReactMarkdown>{content || '*No content to preview yet.*'}</ReactMarkdown>
+                        </motion.div>
+                      )}
 
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex items-center gap-2 text-primary">
-                  <TagIcon size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Tags</span>
-                </div>
-                {tags.map((tag) => (
-                  <Badge 
-                    key={tag} 
-                    className="bg-primary/10 text-primary hover:bg-primary/20 border-none rounded-lg px-2 py-0.5 text-[10px] font-bold flex items-center gap-1 group transition-all"
-                  >
-                    {tag}
-                    <X 
-                      size={10} 
-                      className="cursor-pointer opacity-40 group-hover:opacity-100" 
-                      onClick={() => removeTag(tag)}
-                    />
-                  </Badge>
-                ))}
-                <Input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={addTag}
-                  placeholder="Add tag..."
-                  className="w-24 h-7 text-[10px] bg-white/5 border-none focus-visible:ring-1 focus-visible:ring-primary/30 rounded-lg p-2"
-                />
-              </div>
+                      {viewMode === 'split' && (
+                        <motion.div
+                          key="split"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="flex gap-12"
+                        >
+                          <div className="w-1/2">
+                            <textarea
+                              value={content}
+                              onChange={(e) => handleContentChange(e.target.value)}
+                              placeholder="Writing..."
+                              className="w-full min-h-[500px] resize-none bg-transparent border-none p-0 focus:outline-none text-lg leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
+                            />
+                          </div>
+                          <div className="w-px bg-white/5" />
+                          <div className="w-1/2 prose prose-invert prose-p:text-muted-foreground/80 prose-headings:text-foreground prose-sm max-w-none">
+                            <ReactMarkdown>{content}</ReactMarkdown>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              </LayoutGroup>
             </div>
-          </DialogHeader>
+          </ScrollArea>
 
-          <Tabs 
-            defaultValue="edit" 
-            className="flex-1 flex flex-col min-h-0"
-          >
-            <div className="px-8 border-b border-white/5 flex justify-between items-center bg-white/2">
-              <TabsList className="bg-transparent gap-6 h-12 p-0">
-                <TabsTrigger 
-                  value="edit" 
-                  className="data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-primary rounded-none h-full px-0 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em]"
-                >
-                  <Edit3 size={12} /> Edit
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="preview" 
-                  className="data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none border-b-2 border-transparent data-[state=active]:border-primary rounded-none h-full px-0 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em]"
-                >
-                  <Eye size={12} /> Preview
-                </TabsTrigger>
-              </TabsList>
-            </div>
+          {/* Floating Dock Toolbar */}
+          <AnimatePresence>
+            {!isFocusMode && (
+              <motion.div 
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+                className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50"
+              >
+                <div className="flex items-center gap-1.5 p-2 rounded-2xl glass border-white/10 shadow-2xl">
+                  <TooltipProvider delayDuration={0}>
+                    {/* Mode Toggles */}
+                    <div className="flex items-center gap-1 px-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={viewMode === 'edit' ? 'default' : 'ghost'} 
+                            size="icon" 
+                            onClick={() => setViewMode('edit')} 
+                            className="h-10 w-10 rounded-xl"
+                          >
+                            <Edit3 size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit Mode</TooltipContent>
+                      </Tooltip>
 
-            <TabsContent value="edit" className="flex-1 m-0 p-0 relative min-h-0">
-              <Textarea
-                value={content}
-                onChange={(e) => {
-                  setContent(e.target.value);
-                  setSaveError(null);
-                }}
-                placeholder="Start typing your masterpiece..."
-                className="w-full h-full resize-none bg-transparent border-none p-8 focus-visible:ring-0 text-lg leading-relaxed font-medium placeholder:text-muted-foreground/20"
-              />
-            </TabsContent>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={viewMode === 'split' ? 'default' : 'ghost'} 
+                            size="icon" 
+                            onClick={() => setViewMode('split')} 
+                            className="h-10 w-10 rounded-xl hidden md:flex"
+                          >
+                            <Columns size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Split View</TooltipContent>
+                      </Tooltip>
 
-            <TabsContent value="preview" className="flex-1 m-0 p-0 overflow-y-auto min-h-0">
-              <div className="p-8 prose prose-invert max-w-none">
-                <ReactMarkdown>{content || '*No content to preview*'}</ReactMarkdown>
-              </div>
-            </TabsContent>
-          </Tabs>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={viewMode === 'preview' ? 'default' : 'ghost'} 
+                            size="icon" 
+                            onClick={() => setViewMode('preview')} 
+                            className="h-10 w-10 rounded-xl"
+                          >
+                            <Eye size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Preview Mode</TooltipContent>
+                      </Tooltip>
+                    </div>
+
+                    <div className="w-px h-6 bg-white/10 mx-1" />
+
+                    {/* Format Tools */}
+                    {viewMode !== 'preview' && (
+                      <div className="flex items-center gap-1 px-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Bold size={18} /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Bold</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Italic size={18} /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Italic</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10"><List size={18} /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Bullet List</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+
+                    <div className="w-px h-6 bg-white/10 mx-1" />
+
+                    {/* Action Tools */}
+                    <div className="flex items-center gap-1 px-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={handleUndo} 
+                            disabled={!canUndo}
+                            className="h-10 w-10 rounded-xl disabled:opacity-20"
+                          >
+                            <Undo2 size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Undo</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={copyToClipboard} 
+                            className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
+                          >
+                            {copied ? <Check size={18} /> : <Copy size={18} />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{copied ? 'Copied!' : 'Copy Content'}</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setIsFocusMode(true)} 
+                            className="h-10 w-10 rounded-xl"
+                          >
+                            <Maximize2 size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Zen Mode</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Focus Mode Exit */}
+          {isFocusMode && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute top-12 left-1/2 -translate-x-1/2 z-50"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsFocusMode(false)}
+                className="rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-md text-[10px] font-bold uppercase tracking-[0.3em] px-6 border border-white/5"
+              >
+                Exit Zen Mode
+              </Button>
+            </motion.div>
+          )}
+
         </div>
+
+        {/* Info Sidebar */}
+        <AnimatePresence>
+          {isSidebarOpen && (
+            <motion.div
+              initial={{ x: 400, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 400, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-[350px] border-l border-white/5 bg-white/[0.02] backdrop-blur-xl flex flex-col"
+            >
+              <div className="h-16 flex items-center justify-between px-6 border-b border-white/5">
+                <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/50">Note Intelligence</span>
+                <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)} className="rounded-full h-8 w-8">
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+
+              <ScrollArea className="flex-1">
+                <div className="p-8 space-y-12">
+                  {/* Stats Section */}
+                  <section className="space-y-6">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Zap size={16} />
+                      <h3 className="text-[10px] font-black uppercase tracking-widest">Performance</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
+                        <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Words</span>
+                        <p className="text-2xl font-black">{stats.words}</p>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
+                        <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Characters</span>
+                        <p className="text-2xl font-black">{stats.chars}</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Tags Section */}
+                  <section className="space-y-6">
+                    <div className="flex items-center gap-2 text-primary">
+                      <Hash size={16} />
+                      <h3 className="text-[10px] font-black uppercase tracking-widest">Organization</h3>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap gap-2">
+                        {tags.map((tag) => (
+                          <Badge 
+                            key={tag}
+                            className="bg-white/5 text-muted-foreground hover:bg-primary/10 hover:text-primary border border-white/5 hover:border-primary/20 rounded-xl px-3 py-1 text-xs font-bold transition-all flex items-center gap-2 group"
+                          >
+                            {tag}
+                            <X 
+                              size={12} 
+                              className="cursor-pointer opacity-30 group-hover:opacity-100 hover:text-destructive transition-all" 
+                              onClick={() => removeTag(tag)}
+                            />
+                          </Badge>
+                        ))}
+                      </div>
+                      <div className="relative">
+                        <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/30" size={14} />
+                        <input
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={addTag}
+                          placeholder="Add a collection..."
+                          className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-muted-foreground/20"
+                        />
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* History Section */}
+                  <section className="space-y-6">
+                    <div className="flex items-center gap-2 text-primary">
+                      <History size={16} />
+                      <h3 className="text-[10px] font-black uppercase tracking-widest">Chronology</h3>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-bold">Last Modified</p>
+                          <p className="text-xs text-muted-foreground/60">{lastSaved?.toLocaleString() || 'Just now'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 opacity-40">
+                        <div className="size-2 rounded-full bg-white/20 mt-1.5 shrink-0" />
+                        <div>
+                          <p className="text-sm font-bold">Note Created</p>
+                          <p className="text-xs text-muted-foreground/60">{new Date(note?.createdAt || Date.now()).toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </ScrollArea>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </DialogContent>
     </Dialog>
   );
