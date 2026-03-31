@@ -13,7 +13,7 @@ import { Sparkles, Inbox, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { notes, searchTerm, selectedTag, addNote, fetchNotes, loading } = useNoteStore();
   const hydrated = useIsHydrated();
@@ -62,7 +62,7 @@ export default function Home() {
 
   return (
     <main className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
+      <Sidebar onNewNote={(id) => setEditingNoteId(id)} />
       
       <div className="flex-1 flex flex-col relative overflow-hidden">
         {/* Header decoration */}

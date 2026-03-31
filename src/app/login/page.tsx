@@ -66,7 +66,7 @@ export default function LoginPage() {
           setLoading(false);
         }
       } catch (err) {
-        setError('Failed to register');
+        setError(err instanceof Error ? err.message : 'Failed to register');
         setLoading(false);
       }
     }

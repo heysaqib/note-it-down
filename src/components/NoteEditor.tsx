@@ -1,20 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Note, useNoteStore } from '@/store/useNoteStore';
+import { useNoteStore } from '@/store/useNoteStore';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle 
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import ReactMarkdown from 'react-markdown';
-import { X, Tag as TagIcon, Eye, Edit3, Save } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { X, Tag as TagIcon, Eye, Edit3, Save, Loader2, Check } from 'lucide-react';
 
 interface NoteEditorProps {
   noteId: string | null;
@@ -30,21 +29,53 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const [content, setContent] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState('edit');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
+  // Synchronize local state with the selected note
   useEffect(() => {
     if (note) {
       setTitle(note.title);
       setContent(note.content);
       setTags(note.tags);
+      setLastSaved(new Date(note.updatedAt));
+      setSaveError(null);
     }
-  }, [note]);
+  }, [noteId, note]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (noteId) {
-      updateNote(noteId, { title, content, tags });
+      setIsSaving(true);
+      setSaveError(null);
+      const success = await updateNote(noteId, { title, content, tags });
+      setIsSaving(false);
+      if (success) {
+        setLastSaved(new Date());
+      } else {
+        setSaveError('Failed to save');
+      }
     }
   };
+
+  // Debounced auto-save
+  useEffect(() => {
+    if (!noteId || !isOpen || !note) return;
+
+    // Don't auto-save if the values haven't changed from the current note in store
+    if (title === note.title && 
+        content === note.content && 
+        JSON.stringify(tags) === JSON.stringify(note.tags)) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleSave();
+    }, 1500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, content, tags, noteId, isOpen]);
 
   const addTag = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && tagInput.trim()) {
@@ -52,7 +83,6 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
       if (!tags.includes(tagInput.trim())) {
         const newTags = [...tags, tagInput.trim()];
         setTags(newTags);
-        if (noteId) updateNote(noteId, { tags: newTags });
       }
       setTagInput('');
     }
@@ -61,7 +91,6 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const removeTag = (tagToRemove: string) => {
     const newTags = tags.filter((t) => t !== tagToRemove);
     setTags(newTags);
-    if (noteId) updateNote(noteId, { tags: newTags });
   };
 
   if (!note && isOpen) return null;
@@ -77,18 +106,52 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                   value={title}
                   onChange={(e) => {
                     setTitle(e.target.value);
-                    if (noteId) updateNote(noteId, { title: e.target.value });
+                    setSaveError(null);
                   }}
                   placeholder="Note Title"
                   className="text-3xl font-black bg-transparent border-none p-0 focus-visible:ring-0 placeholder:text-muted-foreground/30 tracking-tight"
                 />
-                <div className="flex items-center gap-2">
-                   <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mr-4">
-                    Auto-saved
+                <div className="flex items-center gap-4">
+                   <div className="flex flex-col items-end">
+                     <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      {isSaving ? (
+                        <>
+                          <Loader2 size={10} className="animate-spin text-primary" />
+                          Saving...
+                        </>
+                      ) : saveError ? (
+                        <>
+                          <X size={10} className="text-destructive" />
+                          <span className="text-destructive">{saveError}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check size={10} className="text-green-500" />
+                          Saved
+                        </>
+                      )}
+                     </div>
+                     {lastSaved && !isSaving && (
+                       <span className="text-[8px] text-muted-foreground/50 tabular-nums">
+                         {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                       </span>
+                     )}
                    </div>
+                   
+                   <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="h-8 px-3 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
+                   >
+                     <Save size={14} />
+                     Save Now
+                   </Button>
+
                    <button 
                     onClick={onClose}
-                    className="p-2 hover:bg-white/5 rounded-xl transition-colors"
+                    className="p-2 hover:bg-white/5 rounded-xl transition-colors text-muted-foreground hover:text-foreground"
                    >
                      <X size={20} />
                    </button>
@@ -127,7 +190,6 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
           <Tabs 
             defaultValue="edit" 
             className="flex-1 flex flex-col min-h-0"
-            onValueChange={setActiveTab}
           >
             <div className="px-8 border-b border-white/5 flex justify-between items-center bg-white/2">
               <TabsList className="bg-transparent gap-6 h-12 p-0">
@@ -151,7 +213,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                 value={content}
                 onChange={(e) => {
                   setContent(e.target.value);
-                  if (noteId) updateNote(noteId, { content: e.target.value });
+                  setSaveError(null);
                 }}
                 placeholder="Start typing your masterpiece..."
                 className="w-full h-full resize-none bg-transparent border-none p-8 focus-visible:ring-0 text-lg leading-relaxed font-medium placeholder:text-muted-foreground/20"

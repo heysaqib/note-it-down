@@ -7,28 +7,18 @@ export async function POST(req: Request) {
   try {
     const { name, email, password } = await req.json();
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { message: 'Missing email or password' },
-        { status: 400 }
-      );
+    if (!name || !email || !password) {
+      return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
     }
 
     await dbConnect();
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json(
-        { message: 'User already exists' },
-        { status: 400 }
-      );
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return NextResponse.json({ message: 'User already exists' }, { status: 400 });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create user
+    const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
       name,
       email,
@@ -36,13 +26,12 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(
-      { message: 'User created successfully', userId: user._id },
+      { message: 'User registered', userId: user._id }, 
       { status: 201 }
     );
-  } catch (error: any) {
-    console.error('Registration error:', error);
+  } catch (error: unknown) {
     return NextResponse.json(
-      { message: 'Error creating user', error: error.message },
+      { message: error instanceof Error ? error.message : 'An unknown error occurred' }, 
       { status: 500 }
     );
   }
