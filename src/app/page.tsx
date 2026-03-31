@@ -33,9 +33,13 @@ export default function Home() {
 
   const filteredNotes = useMemo(() => {
     return notes.filter((note) => {
+      const title = note.title || '';
+      const content = note.content || '';
+      const search = searchTerm.toLowerCase();
+      
       const matchesSearch = 
-        note.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchTerm.toLowerCase());
+        title.toLowerCase().includes(search) ||
+        content.toLowerCase().includes(search);
       
       const matchesTag = !selectedTag || note.tags.includes(selectedTag);
       
@@ -43,7 +47,8 @@ export default function Home() {
     });
   }, [notes, searchTerm, selectedTag]);
 
-  if (!hydrated || status === 'loading') {
+  // Handle loading and redirect states together to prevent flashes
+  if (!hydrated || status === 'loading' || status === 'unauthenticated') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <motion.div 
@@ -57,8 +62,6 @@ export default function Home() {
       </div>
     );
   }
-
-  if (status === 'unauthenticated') return null;
 
   return (
     <main className="flex h-screen overflow-hidden bg-background">
@@ -139,7 +142,10 @@ export default function Home() {
                     </p>
                     {!searchTerm && !selectedTag && (
                       <Button 
-                        onClick={() => addNote({ title: '', content: '', tags: [] })}
+                        onClick={async () => {
+                          const newNote = await addNote({ title: '', content: '', tags: [] });
+                          if (newNote) setEditingNoteId(newNote._id);
+                        }}
                         className="rounded-2xl bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-8 py-6 font-bold"
                       >
                         <Plus className="mr-2" size={18} />

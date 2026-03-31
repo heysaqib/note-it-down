@@ -104,18 +104,21 @@ export function Sidebar({ onNewNote }: SidebarProps) {
                 CATEGORIES
               </h2>
               {selectedTag && (
-                <button 
+                <Button 
+                  variant="ghost"
+                  size="xs"
                   onClick={() => setSelectedTag(null)}
-                  className="text-[10px] flex items-center gap-1 text-primary hover:opacity-70 transition-opacity font-bold uppercase"
+                  className="text-[10px] flex items-center gap-1 text-primary hover:opacity-70 transition-opacity font-bold uppercase h-auto p-1"
                 >
                   <XCircle size={10} /> CLEAR
-                </button>
+                </Button>
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setSelectedTag(null)}
-                className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 h-auto ${
                   !selectedTag 
                     ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10 border border-primary/20' 
                     : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5'
@@ -128,13 +131,14 @@ export function Sidebar({ onNewNote }: SidebarProps) {
                   All Notes
                 </div>
                 <span className="text-[10px] opacity-60 font-mono">{notes.length}</span>
-              </button>
+              </Button>
               
               {allTags.map((tag) => (
-                <button
+                <Button
                   key={tag}
+                  variant="ghost"
                   onClick={() => setSelectedTag(tag)}
-                  className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
+                  className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 h-auto ${
                     selectedTag === tag 
                       ? 'bg-primary/10 text-primary shadow-sm shadow-primary/10 border border-primary/20' 
                       : 'text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5'
@@ -149,7 +153,7 @@ export function Sidebar({ onNewNote }: SidebarProps) {
                   <span className="text-[10px] opacity-60 font-mono">
                     {notes.filter((n) => n.tags.includes(tag)).length}
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>

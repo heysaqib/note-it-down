@@ -49,7 +49,9 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
               <CardTitle className="text-xl font-bold line-clamp-2 bg-gradient-to-br from-foreground to-foreground/60 bg-clip-text">
                 {note.title || 'Untitled Note'}
               </CardTitle>
-              <button
+              <Button
+                variant="ghost"
+                size="icon-sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsConfirmOpen(true);
@@ -57,7 +59,7 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
                 className="opacity-0 group-hover:opacity-100 p-2 hover:bg-destructive/10 hover:text-destructive rounded-full transition-all duration-200"
               >
                 <Trash2 size={16} />
-              </button>
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="flex-1">
