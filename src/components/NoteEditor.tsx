@@ -51,7 +51,6 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const { notes, updateNote } = useNoteStore();
   const note = notes.find((n) => n._id === noteId);
 
-  // Initializing state from note directly
   const [title, setTitle] = useState(note?.title || '');
   const [content, setContent] = useState(note?.content || '');
   const [tagInput, setTagInput] = useState('');
@@ -59,7 +58,6 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(note ? new Date(note.updatedAt) : null);
   
-  // Default to preview mode
   const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -194,325 +192,358 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent showCloseButton={false} className="max-w-[100vw] w-full h-[100vh] p-0 overflow-hidden border-none bg-background/80 backdrop-blur-3xl gap-0 flex flex-row rounded-none shadow-none m-0 select-none">
+      <DialogContent 
+        showCloseButton={false} 
+        className="max-w-6xl w-[95vw] h-[85vh] p-0 overflow-hidden border border-white/10 bg-background/95 backdrop-blur-2xl flex flex-col rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.5)] m-0 select-none"
+      >
         
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 relative h-full">
-          
-          {/* Top Navigation */}
-          <div className="h-16 flex items-center justify-between px-8 border-b border-white/5 z-50">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
-                {isSaving ? (
-                  <>
-                    <Loader2 size={12} className="animate-spin text-primary" />
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Syncing</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      {lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Draft'}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                      className={cn("rounded-full transition-colors", isSidebarOpen && "bg-primary/10 text-primary")}
-                    >
-                      <Info size={20} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Note Details</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <div className="h-4 w-px bg-white/10 mx-2" />
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-destructive/10 hover:text-destructive">
-                      <X size={20} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Close Editor</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-          </div>
-
-          {/* Editor Canvas */}
-          <ScrollArea className="flex-1 w-full">
-            <div className="max-w-3xl mx-auto px-8 pt-40 pb-56 transition-all duration-700">
-              <LayoutGroup>
-                <motion.div layout className="space-y-6">
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Untitled Note"
-                    className="w-full text-4xl font-bold bg-transparent border-none p-0 focus:outline-none placeholder:text-muted-foreground/10 tracking-tight text-foreground selection:bg-primary/30"
-                  />
-                  
-                  <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} />
-                      {formattedCreatedAt}
-                    </div>
-                    <div className="size-1 rounded-full bg-white/10" />
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={14} />
-                      {stats.readingTime} min read
-                    </div>
-                  </div>
-
-                  <div className="min-h-[60vh] pt-4">
-                    <AnimatePresence mode="wait">
-                      {viewMode === 'edit' ? (
-                        <motion.div
-                          key="edit"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.3 }}
-                        >
-                          <textarea
-                            ref={textareaRef}
-                            value={content}
-                            onChange={(e) => handleContentChange(e.target.value)}
-                            placeholder="Start writing something amazing..."
-                            className="w-full min-h-[500px] resize-none bg-transparent border-none p-0 focus:outline-none text-xl leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
-                            autoFocus
-                          />
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="preview"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          transition={{ duration: 0.3 }}
-                          className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg"
-                        >
-                          <ReactMarkdown>{content || '*No content to preview yet.*'}</ReactMarkdown>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                </motion.div>
-              </LayoutGroup>
-            </div>
-          </ScrollArea>
-
-          {/* Floating Dock Toolbar */}
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-50">
-            <div className="flex items-center gap-1.5 p-2 rounded-2xl glass border-white/10 shadow-2xl">
-              <TooltipProvider delayDuration={0}>
-                {/* Mode Toggles */}
-                <div className="flex items-center gap-1 px-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant={viewMode === 'edit' ? 'default' : 'ghost'} 
-                        size="icon" 
-                        onClick={() => setViewMode('edit')} 
-                        className="h-10 w-10 rounded-xl"
-                      >
-                        <Edit3 size={18} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit Mode</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant={viewMode === 'preview' ? 'default' : 'ghost'} 
-                        size="icon" 
-                        onClick={() => setViewMode('preview')} 
-                        className="h-10 w-10 rounded-xl"
-                      >
-                        <Eye size={18} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Preview Mode</TooltipContent>
-                  </Tooltip>
-                </div>
-
-                <div className="w-px h-6 bg-white/10 mx-1" />
-
-                {/* Format Tools */}
-                {viewMode === 'edit' && (
-                  <div className="flex items-center gap-1 px-1">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Bold size={18} /></Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Bold</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Italic size={18} /></Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Italic</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10"><List size={18} /></Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Bullet List</TooltipContent>
-                    </Tooltip>
-                  </div>
-                )}
-
-                {viewMode === 'edit' && <div className="w-px h-6 bg-white/10 mx-1" />}
-
-                {/* Action Tools */}
-                <div className="flex items-center gap-1 px-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={handleUndo} 
-                        disabled={!canUndo}
-                        className="h-10 w-10 rounded-xl disabled:opacity-20"
-                      >
-                        <Undo2 size={18} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Undo</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={copyToClipboard} 
-                        className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
-                      >
-                        {copied ? <Check size={18} /> : <Copy size={18} />}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{copied ? 'Copied!' : 'Copy Content'}</TooltipContent>
-                  </Tooltip>
-                </div>
-              </TooltipProvider>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Info Sidebar */}
+        {/* Top Navigation - Full Width - Hidden when sidebar is open */}
         <AnimatePresence>
-          {isSidebarOpen && (
-            <motion.div
-              initial={{ x: 400, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 400, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="w-[350px] border-l border-white/5 bg-white/[0.02] backdrop-blur-xl flex flex-col"
+          {!isSidebarOpen && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 80, opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="h-20 flex items-center justify-between px-10 border-b border-white/5 z-50 shrink-0 overflow-hidden"
             >
-              <div className="h-16 flex items-center justify-between px-6 border-b border-white/5">
-                <span className="text-xs font-black uppercase tracking-widest text-muted-foreground/50">Note Intelligence</span>
-                <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)} className="rounded-full h-8 w-8">
-                  <ChevronRight size={16} />
-                </Button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5">
+                  {isSaving ? (
+                    <>
+                      <Loader2 size={12} className="animate-spin text-primary" />
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Syncing</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="size-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        {lastSaved ? `Saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Draft'}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
-              <ScrollArea className="flex-1">
-                <div className="p-8 space-y-12">
-                  {/* Stats Section */}
-                  <section className="space-y-6">
-                    <div className="flex items-center gap-2 text-primary">
-                      <Zap size={16} />
-                      <h3 className="text-[10px] font-black uppercase tracking-widest">Performance</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
-                        <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Words</span>
-                        <p className="text-2xl font-black">{stats.words}</p>
-                      </div>
-                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-1">
-                        <span className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-wider">Characters</span>
-                        <p className="text-2xl font-black">{stats.chars}</p>
-                      </div>
-                    </div>
-                  </section>
+              <div className="flex items-center gap-3">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => setIsSidebarOpen(true)} 
+                        className="rounded-full hover:bg-white/5 transition-all duration-300"
+                      >
+                        <Info size={20} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Note Intelligence</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
 
-                  {/* Tags Section */}
-                  <section className="space-y-6">
-                    <div className="flex items-center gap-2 text-primary">
-                      <Hash size={16} />
-                      <h3 className="text-[10px] font-black uppercase tracking-widest">Organization</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap gap-2">
-                        {tags.map((tag) => (
-                          <Badge 
-                            key={tag}
-                            className="bg-white/5 text-muted-foreground hover:bg-primary/10 hover:text-primary border border-white/5 hover:border-primary/20 rounded-xl px-3 py-1 text-xs font-bold transition-all flex items-center gap-2 group"
-                          >
-                            {tag}
-                            <X 
-                              size={12} 
-                              className="cursor-pointer opacity-30 group-hover:opacity-100 hover:text-destructive transition-all" 
-                              onClick={() => removeTag(tag)}
-                            />
-                          </Badge>
-                        ))}
-                      </div>
-                      <div className="relative">
-                        <TagIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/30" size={14} />
-                        <input
-                          value={tagInput}
-                          onChange={(e) => setTagInput(e.target.value)}
-                          onKeyDown={addTag}
-                          placeholder="Add a collection..."
-                          className="w-full bg-white/5 border border-white/5 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-muted-foreground/20"
-                        />
-                      </div>
-                    </div>
-                  </section>
+                <div className="h-5 w-px bg-white/10 mx-1" />
 
-                  {/* History Section */}
-                  <section className="space-y-6">
-                    <div className="flex items-center gap-2 text-primary">
-                      <History size={16} />
-                      <h3 className="text-[10px] font-black uppercase tracking-widest">Chronology</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                        <div>
-                          <p className="text-sm font-bold">Last Modified</p>
-                          <p className="text-xs text-muted-foreground/60">{formattedLastModified}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 opacity-40">
-                        <div className="size-2 rounded-full bg-white/20 mt-1.5 shrink-0" />
-                        <div>
-                          <p className="text-sm font-bold">Note Created</p>
-                          <p className="text-xs text-muted-foreground/60">{formattedFullCreatedAt}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-                </div>
-              </ScrollArea>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-destructive/10 hover:text-destructive transition-colors">
+                        <X size={20} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Close Editor</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Main Body - Split into Canvas and Sidebar */}
+        <div className="flex-1 flex flex-row overflow-hidden relative">
+          
+          {/* Canvas Area */}
+          <div className="flex-1 flex flex-col min-w-0 relative h-full">
+            <ScrollArea className="flex-1 w-full">
+              <div className="max-w-3xl mx-auto px-10 pt-20 pb-40 transition-all duration-700">
+                <LayoutGroup>
+                  <motion.div layout className="space-y-8">
+                    <input
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Untitled Note"
+                      className="w-full text-5xl font-bold bg-transparent border-none p-0 focus:outline-none placeholder:text-muted-foreground/10 tracking-tight text-foreground selection:bg-primary/30"
+                    />
+                    
+                    <div className="flex items-center gap-5 text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.3em]">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={14} className="text-primary/40" />
+                        {formattedCreatedAt}
+                      </div>
+                      <div className="size-1 rounded-full bg-white/10" />
+                      <div className="flex items-center gap-2">
+                        <Clock size={14} className="text-primary/40" />
+                        {stats.readingTime} min read
+                      </div>
+                    </div>
+
+                    <div className="min-h-[40vh] pt-6">
+                      <AnimatePresence mode="wait">
+                        {viewMode === 'edit' ? (
+                          <motion.div
+                            key="edit"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <textarea
+                              ref={textareaRef}
+                              value={content}
+                              onChange={(e) => handleContentChange(e.target.value)}
+                              placeholder="Start writing something amazing..."
+                              className="w-full min-h-[450px] resize-none bg-transparent border-none p-0 focus:outline-none text-xl leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
+                              autoFocus
+                            />
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="preview"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                            className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg"
+                          >
+                            <ReactMarkdown>{content || '*No content to preview yet.*'}</ReactMarkdown>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                </LayoutGroup>
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Floating Dock Toolbar - Hidden when sidebar is open */}
+          <AnimatePresence>
+            {!isSidebarOpen && (
+              <motion.div 
+                initial={{ y: 100, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+                className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+              >
+                <div className="flex items-center gap-1.5 p-2 rounded-2xl glass border-white/10 shadow-2xl pointer-events-auto">
+                  <TooltipProvider delayDuration={0}>
+                    <div className="flex items-center gap-1 px-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={viewMode === 'edit' ? 'default' : 'ghost'} 
+                            size="icon" 
+                            onClick={() => setViewMode('edit')} 
+                            className="h-10 w-10 rounded-xl"
+                          >
+                            <Edit3 size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit Mode</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={viewMode === 'preview' ? 'default' : 'ghost'} 
+                            size="icon" 
+                            onClick={() => setViewMode('preview')} 
+                            className="h-10 w-10 rounded-xl"
+                          >
+                            <Eye size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Preview Mode</TooltipContent>
+                      </Tooltip>
+                    </div>
+
+                    <div className="w-px h-6 bg-white/10 mx-1" />
+
+                    {viewMode === 'edit' && (
+                      <div className="flex items-center gap-1 px-1">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Bold size={18} /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Bold</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Italic size={18} /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Italic</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10"><List size={18} /></Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Bullet List</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
+
+                    {viewMode === 'edit' && <div className="w-px h-6 bg-white/10 mx-1" />}
+
+                    <div className="flex items-center gap-1 px-1">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={handleUndo} 
+                            disabled={!canUndo}
+                            className="h-10 w-10 rounded-xl disabled:opacity-20"
+                          >
+                            <Undo2 size={18} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Undo</TooltipContent>
+                      </Tooltip>
+
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={copyToClipboard} 
+                            className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
+                          >
+                            {copied ? <Check size={18} /> : <Copy size={18} />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{copied ? 'Copied!' : 'Copy Content'}</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Info Sidebar - Animated Width for Pushing Canvas */}
+          <AnimatePresence>
+            {isSidebarOpen && (
+              <motion.div
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: '100%', opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="bg-white/[0.01] backdrop-blur-3xl flex flex-col h-full overflow-hidden shrink-0 z-[60]"
+              >
+                <div className="w-full flex flex-col h-full">
+                  <div className="h-20 flex items-center justify-between px-10 border-b border-white/5 shrink-0">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                        <Zap size={18} />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-[0.2em]">Note Intelligence</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)} className="rounded-full h-10 w-10 hover:bg-white/5">
+                        <ChevronRight size={20} />
+                      </Button>
+                      <div className="h-5 w-px bg-white/10 mx-1" />
+                      <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-10 w-10 hover:bg-destructive/10 hover:text-destructive">
+                        <X size={20} />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <ScrollArea className="flex-1 h-full">
+                    <div className="max-w-4xl mx-auto p-12 space-y-16 pb-32">
+                      <section className="space-y-8">
+                        <div className="flex items-center gap-2 text-primary/60">
+                          <Zap size={16} />
+                          <h3 className="text-[10px] font-black uppercase tracking-widest">Performance Insights</h3>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                          <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-1">
+                            <span className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-wider">Total Words</span>
+                            <p className="text-4xl font-black tracking-tighter">{stats.words}</p>
+                          </div>
+                          <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-1">
+                            <span className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-wider">Characters</span>
+                            <p className="text-4xl font-black tracking-tighter">{stats.chars}</p>
+                          </div>
+                          <div className="p-6 rounded-[2rem] bg-white/[0.03] border border-white/5 space-y-1">
+                            <span className="text-[9px] font-bold text-muted-foreground/30 uppercase tracking-wider">Reading Est.</span>
+                            <p className="text-4xl font-black tracking-tighter">{stats.readingTime}m</p>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="space-y-8">
+                        <div className="flex items-center gap-2 text-primary/60">
+                          <Hash size={16} />
+                          <h3 className="text-[10px] font-black uppercase tracking-widest">Organizational Layer</h3>
+                        </div>
+                        <div className="space-y-6">
+                          <div className="flex flex-wrap gap-3">
+                            {tags.map((tag) => (
+                              <Badge 
+                                key={tag}
+                                className="bg-white/5 text-muted-foreground hover:bg-primary/10 hover:text-primary border border-white/5 hover:border-primary/20 rounded-2xl px-5 py-2 text-xs font-bold transition-all flex items-center gap-2 group"
+                              >
+                                {tag}
+                                <X 
+                                  size={12} 
+                                  className="cursor-pointer opacity-30 group-hover:opacity-100 hover:text-destructive transition-all" 
+                                  onClick={() => removeTag(tag)}
+                                />
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="relative max-w-md">
+                            <TagIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/20" size={16} />
+                            <input
+                              value={tagInput}
+                              onChange={(e) => setTagInput(e.target.value)}
+                              onKeyDown={addTag}
+                              placeholder="Add to collection..."
+                              className="w-full bg-white/[0.03] border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-muted-foreground/10"
+                            />
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="space-y-8">
+                        <div className="flex items-center gap-2 text-primary/60">
+                          <History size={16} />
+                          <h3 className="text-[10px] font-black uppercase tracking-widest">Historical Chronology</h3>
+                        </div>
+                        <div className="space-y-8 relative before:absolute before:left-1 before:top-2 before:bottom-2 before:w-px before:bg-white/5">
+                          <div className="flex items-start gap-6 relative">
+                            <div className="size-2 rounded-full bg-primary mt-2 shrink-0 shadow-[0_0_12px_rgba(var(--primary-rgb),0.6)] z-10" />
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-foreground/90">Last Modification Cycle</p>
+                              <p className="text-xs text-muted-foreground/40 font-medium tracking-tight">{formattedLastModified}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-6 relative">
+                            <div className="size-2 rounded-full bg-white/20 mt-2 shrink-0 z-10" />
+                            <div className="space-y-1">
+                              <p className="text-sm font-bold text-foreground/70">Initial Entry Created</p>
+                              <p className="text-xs text-muted-foreground/30 font-medium tracking-tight">{formattedFullCreatedAt}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+                    </div>
+                  </ScrollArea>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
       </DialogContent>
     </Dialog>
