@@ -17,14 +17,14 @@ interface NoteState {
   loading: boolean;
   error: string | null;
   fetchNotes: () => Promise<void>;
-  addNote: (note: Omit<Note, '_id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateNote: (id: string, updates: Partial<Omit<Note, '_id' | 'createdAt'>>) => Promise<void>;
+  addNote: (note: Omit<Note, '_id' | 'createdAt' | 'updatedAt'>) => Promise<Note | undefined>;
+  updateNote: (id: string, updates: Partial<Omit<Note, '_id' | 'createdAt'>>) => Promise<boolean>;
   deleteNote: (id: string) => Promise<void>;
   setSearchTerm: (term: string) => void;
   setSelectedTag: (tag: string | null) => void;
 }
 
-export const useNoteStore = create<NoteState>((set, get) => ({
+export const useNoteStore = create<NoteState>((set) => ({
   notes: [],
   searchTerm: '',
   selectedTag: null,
@@ -38,8 +38,8 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       if (!res.ok) throw new Error('Failed to fetch notes');
       const data = await res.json();
       set({ notes: data, loading: false });
-    } catch (error: any) {
-      set({ error: error.message, loading: false });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : 'An unknown error occurred', loading: false });
     }
   },
 
@@ -55,8 +55,10 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       set((state) => ({
         notes: [newNote, ...state.notes],
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+      return newNote;
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : 'An unknown error occurred' });
+      return undefined;
     }
   },
 
@@ -72,8 +74,10 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       set((state) => ({
         notes: state.notes.map((n) => (n._id === id ? updatedNote : n)),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+      return true;
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : 'An unknown error occurred' });
+      return false;
     }
   },
 
@@ -86,8 +90,8 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       set((state) => ({
         notes: state.notes.filter((n) => n._id !== id),
       }));
-    } catch (error: any) {
-      set({ error: error.message });
+    } catch (error: unknown) {
+      set({ error: error instanceof Error ? error.message : 'An unknown error occurred' });
     }
   },
 

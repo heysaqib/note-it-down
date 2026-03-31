@@ -15,8 +15,11 @@ export async function GET() {
     const notes = await Note.find({ userId: session.user.id }).sort({ updatedAt: -1 });
 
     return NextResponse.json(notes);
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : 'An unknown error occurred' }, 
+      { status: 500 }
+    );
   }
 }
 
@@ -38,7 +41,10 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(note, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { message: error instanceof Error ? error.message : 'An unknown error occurred' }, 
+      { status: 500 }
+    );
   }
 }

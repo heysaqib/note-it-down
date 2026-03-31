@@ -3,14 +3,17 @@
 import { useNoteStore } from '@/store/useNoteStore';
 import { Search, Plus, Hash, XCircle, Moon, Sun, Monitor, LogOut, User as UserIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { useIsHydrated } from '@/hooks/useIsHydrated';
 import { useSession, signOut } from 'next-auth/react';
 
-export function Sidebar() {
+interface SidebarProps {
+  onNewNote?: (id: string) => void;
+}
+
+export function Sidebar({ onNewNote }: SidebarProps) {
   const { data: session } = useSession();
   const { notes, searchTerm, setSearchTerm, selectedTag, setSelectedTag, addNote } = useNoteStore();
   const { theme, setTheme } = useTheme();
@@ -18,12 +21,15 @@ export function Sidebar() {
 
   const allTags = Array.from(new Set(notes.flatMap((n) => n.tags)));
 
-  const handleNewNote = () => {
-    addNote({
+  const handleNewNote = async () => {
+    const newNote = await addNote({
       title: '',
       content: '',
       tags: [],
     });
+    if (newNote && onNewNote) {
+      onNewNote(newNote._id);
+    }
   };
 
   if (!hydrated) return null;
