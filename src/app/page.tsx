@@ -139,7 +139,10 @@ export default function Home() {
                     </p>
                     {!searchTerm && !selectedTag && (
                       <Button 
-                        onClick={() => addNote({ title: '', content: '', tags: [] })}
+                        onClick={async () => {
+                          const newNote = await addNote({ title: '', content: '', tags: [] });
+                          if (newNote) setEditingNoteId(newNote._id);
+                        }}
                         className="rounded-2xl bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-8 py-6 font-bold"
                       >
                         <Plus className="mr-2" size={18} />
