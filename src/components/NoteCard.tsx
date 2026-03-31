@@ -37,7 +37,7 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
               onClick={(e) => {
                 e.stopPropagation();
                 if (confirm('Are you sure you want to delete this note?')) {
-                  deleteNote(note.id);
+                  deleteNote(note._id);
                 }
               }}
               className="opacity-0 group-hover:opacity-100 p-2 hover:bg-destructive/10 hover:text-destructive rounded-full transition-all duration-200"
@@ -66,7 +66,7 @@ export function NoteCard({ note, onClick }: NoteCardProps) {
           </div>
           <div className="flex items-center text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
             <Calendar size={10} className="mr-1" />
-            {formatDistanceToNow(note.updatedAt, { addSuffix: true })}
+            {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
           </div>
         </CardFooter>
       </Card>

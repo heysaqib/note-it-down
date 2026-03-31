@@ -1,15 +1,17 @@
 'use client';
 
 import { useNoteStore } from '@/store/useNoteStore';
-import { Search, Plus, Hash, XCircle, Moon, Sun, Monitor } from 'lucide-react';
+import { Search, Plus, Hash, XCircle, Moon, Sun, Monitor, LogOut, User as UserIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { useIsHydrated } from '@/hooks/useIsHydrated';
+import { useSession, signOut } from 'next-auth/react';
 
 export function Sidebar() {
+  const { data: session } = useSession();
   const { notes, searchTerm, setSearchTerm, selectedTag, setSelectedTag, addNote } = useNoteStore();
   const { theme, setTheme } = useTheme();
   const hydrated = useIsHydrated();
@@ -44,6 +46,28 @@ export function Sidebar() {
             </Button>
           </div>
         </div>
+
+        {session?.user && (
+          <div className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                <UserIcon size={20} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold uppercase tracking-widest text-primary/70">Account</span>
+                <span className="text-sm font-black truncate max-w-[120px]">{session.user.name || session.user.email}</span>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => signOut()}
+              className="rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors h-10 w-10"
+            >
+              <LogOut size={18} />
+            </Button>
+          </div>
+        )}
 
         <Button 
           onClick={handleNewNote}

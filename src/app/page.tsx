@@ -1,19 +1,35 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { useNoteStore } from '@/store/useNoteStore';
 import { Sidebar } from '@/components/Sidebar';
 import { NoteCard } from '@/components/NoteCard';
 import { NoteEditor } from '@/components/NoteEditor';
 import { useIsHydrated } from '@/hooks/useIsHydrated';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Inbox, Plus } from 'lucide-react';
+import { Sparkles, Inbox, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function Home() {
-  const { notes, searchTerm, selectedTag, addNote } = useNoteStore();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { notes, searchTerm, selectedTag, addNote, fetchNotes, loading } = useNoteStore();
   const hydrated = useIsHydrated();
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchNotes();
+    }
+  }, [status, fetchNotes]);
 
   const filteredNotes = useMemo(() => {
     return notes.filter((note) => {
@@ -27,7 +43,7 @@ export default function Home() {
     });
   }, [notes, searchTerm, selectedTag]);
 
-  if (!hydrated) {
+  if (!hydrated || status === 'loading') {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <motion.div 
@@ -41,6 +57,8 @@ export default function Home() {
       </div>
     );
   }
+
+  if (status === 'unauthenticated') return null;
 
   return (
     <main className="flex h-screen overflow-hidden bg-background">
@@ -84,48 +102,54 @@ export default function Home() {
               </motion.div>
             </header>
 
-            <AnimatePresence mode="popLayout">
-              {filteredNotes.length > 0 ? (
-                <motion.div 
-                  layout
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                >
-                  {filteredNotes.map((note) => (
-                    <NoteCard 
-                      key={note.id} 
-                      note={note} 
-                      onClick={() => setEditingNoteId(note.id)} 
-                    />
-                  ))}
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="flex flex-col items-center justify-center py-32 text-center"
-                >
-                  <div className="w-24 h-24 rounded-3xl bg-primary/5 flex items-center justify-center mb-6 border border-primary/10 shadow-inner">
-                    <Inbox className="text-primary/20" size={40} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">No notes found</h3>
-                  <p className="text-muted-foreground max-w-xs mx-auto mb-8 text-sm">
-                    {searchTerm || selectedTag 
-                      ? "We couldn't find any notes matching your current filters." 
-                      : "Start your journey by creating your first note."}
-                  </p>
-                  {!searchTerm && !selectedTag && (
-                    <Button 
-                      onClick={() => addNote({ title: '', content: '', tags: [] })}
-                      className="rounded-2xl bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-8 py-6 font-bold"
-                    >
-                      <Plus className="mr-2" size={18} />
-                      CREATE FIRST NOTE
-                    </Button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-32">
+                <Loader2 className="animate-spin text-primary/20" size={40} />
+              </div>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {filteredNotes.length > 0 ? (
+                  <motion.div 
+                    layout
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  >
+                    {filteredNotes.map((note) => (
+                      <NoteCard 
+                        key={note._id} 
+                        note={note} 
+                        onClick={() => setEditingNoteId(note._id)} 
+                      />
+                    ))}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="flex flex-col items-center justify-center py-32 text-center"
+                  >
+                    <div className="w-24 h-24 rounded-3xl bg-primary/5 flex items-center justify-center mb-6 border border-primary/10 shadow-inner">
+                      <Inbox className="text-primary/20" size={40} />
+                    </div>
+                    <h3 className="text-xl font-bold mb-2">No notes found</h3>
+                    <p className="text-muted-foreground max-w-xs mx-auto mb-8 text-sm">
+                      {searchTerm || selectedTag 
+                        ? "We couldn't find any notes matching your current filters." 
+                        : "Start your journey by creating your first note."}
+                    </p>
+                    {!searchTerm && !selectedTag && (
+                      <Button 
+                        onClick={() => addNote({ title: '', content: '', tags: [] })}
+                        className="rounded-2xl bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300 px-8 py-6 font-bold"
+                      >
+                        <Plus className="mr-2" size={18} />
+                        CREATE FIRST NOTE
+                      </Button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            )}
           </div>
         </div>
       </div>

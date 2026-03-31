@@ -24,7 +24,7 @@ interface NoteEditorProps {
 
 export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const { notes, updateNote } = useNoteStore();
-  const note = notes.find((n) => n.id === noteId);
+  const note = notes.find((n) => n._id === noteId);
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
