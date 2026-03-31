@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNoteStore } from '@/store/useNoteStore';
 import { 
   Dialog, 
@@ -24,17 +24,11 @@ import {
   Check, 
   Undo2, 
   ChevronRight,
-  Columns, 
-  Maximize2, 
-  Minimize2, 
   Copy, 
   Clock, 
-  Type,
   Bold,
   Italic,
   List,
-  Link as LinkIcon,
-  Quote,
   Loader2,
   Info,
   Calendar,
@@ -51,53 +45,40 @@ interface NoteEditorProps {
   onClose: () => void;
 }
 
-type ViewMode = 'edit' | 'preview' | 'split';
+type ViewMode = 'edit' | 'preview';
 
 export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
   const { notes, updateNote } = useNoteStore();
   const note = notes.find((n) => n._id === noteId);
 
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  // Initializing state from note directly
+  const [title, setTitle] = useState(note?.title || '');
+  const [content, setContent] = useState(note?.content || '');
   const [tagInput, setTagInput] = useState('');
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>(note?.tags || []);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(note ? new Date(note.updatedAt) : null);
   
-  const [viewMode, setViewMode] = useState<ViewMode>('edit');
-  const [isFocusMode, setIsFocusMode] = useState(false);
+  // Default to preview mode
+  const [viewMode, setViewMode] = useState<ViewMode>('preview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<string[]>(note ? [note.content] : []);
   const [canUndo, setCanUndo] = useState(false);
 
-  useEffect(() => {
-    if (note) {
-      setTitle(note.title);
-      setContent(note.content);
-      setTags(note.tags);
-      setLastSaved(new Date(note.updatedAt));
-      setSaveError(null);
-      setHistory([note.content]);
-      setCanUndo(false);
-    }
-  }, [noteId, note]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSave = useCallback(async () => {
     if (noteId) {
       setIsSaving(true);
-      setSaveError(null);
       const success = await updateNote(noteId, { title, content, tags });
       setIsSaving(false);
       if (success) {
         setLastSaved(new Date());
-      } else {
-        setSaveError('Sync failed');
       }
     }
-  }, [noteId, title, content, tags, updateNote]);
+  }, [noteId, title, content, tags, updateNote, setIsSaving, setLastSaved]);
 
   useEffect(() => {
     if (!noteId || !isOpen || !note) return;
@@ -117,7 +98,6 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
-    setSaveError(null);
     
     const lastEntry = history[history.length - 1];
     if (newContent !== lastEntry) {
@@ -169,8 +149,26 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
     return { words, chars, readingTime };
   }, [content]);
 
+  const formattedCreatedAt = useMemo(() => {
+    const dateSource = note?.createdAt || 0;
+    return dateSource ? new Date(dateSource).toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    }) : 'Just now';
+  }, [note?.createdAt]);
+
+  const formattedLastModified = useMemo(() => {
+    return lastSaved?.toLocaleString() || 'Just now';
+  }, [lastSaved]);
+
+  const formattedFullCreatedAt = useMemo(() => {
+    const dateSource = note?.createdAt || 0;
+    return dateSource ? new Date(dateSource).toLocaleString() : 'Just now';
+  }, [note?.createdAt]);
+
   const insertMarkdown = (prefix: string, suffix: string = '') => {
-    const textarea = document.querySelector('textarea');
+    const textarea = textareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
@@ -196,21 +194,14 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-[100vw] w-full h-[100vh] p-0 overflow-hidden border-none bg-background/80 backdrop-blur-3xl gap-0 flex flex-row rounded-none shadow-none m-0 select-none">
+      <DialogContent showCloseButton={false} className="max-w-[100vw] w-full h-[100vh] p-0 overflow-hidden border-none bg-background/80 backdrop-blur-3xl gap-0 flex flex-row rounded-none shadow-none m-0 select-none">
         
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 relative h-full">
           
           {/* Top Navigation */}
-          <div className={cn(
-            "h-16 flex items-center justify-between px-8 border-b border-white/5 transition-opacity duration-500 z-50",
-            isFocusMode && "opacity-0 pointer-events-none"
-          )}>
+          <div className="h-16 flex items-center justify-between px-8 border-b border-white/5 z-50">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-white/10">
-                <X size={20} />
-              </Button>
-              <div className="h-4 w-px bg-white/10" />
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5">
                 {isSaving ? (
                   <>
@@ -244,31 +235,38 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                   <TooltipContent>Note Details</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Button variant="ghost" size="icon" onClick={() => setIsFocusMode(true)} className="rounded-full">
-                <Maximize2 size={20} />
-              </Button>
+
+              <div className="h-4 w-px bg-white/10 mx-2" />
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-destructive/10 hover:text-destructive">
+                      <X size={20} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Close Editor</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
 
           {/* Editor Canvas */}
           <ScrollArea className="flex-1 w-full">
-            <div className={cn(
-              "max-w-4xl mx-auto px-8 pt-16 pb-32 transition-all duration-700",
-              isFocusMode ? "pt-24" : "pt-16"
-            )}>
+            <div className="max-w-3xl mx-auto px-8 pt-40 pb-56 transition-all duration-700">
               <LayoutGroup>
-                <motion.div layout className="space-y-8">
+                <motion.div layout className="space-y-6">
                   <input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Untitled Note"
-                    className="w-full text-6xl font-black bg-transparent border-none p-0 focus:outline-none placeholder:text-muted-foreground/10 tracking-tighter text-foreground selection:bg-primary/30"
+                    className="w-full text-4xl font-bold bg-transparent border-none p-0 focus:outline-none placeholder:text-muted-foreground/10 tracking-tight text-foreground selection:bg-primary/30"
                   />
                   
                   <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">
                     <div className="flex items-center gap-1.5">
                       <Calendar size={14} />
-                      {new Date(note?.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                      {formattedCreatedAt}
                     </div>
                     <div className="size-1 rounded-full bg-white/10" />
                     <div className="flex items-center gap-1.5">
@@ -277,9 +275,9 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                     </div>
                   </div>
 
-                  <div className="min-h-[60vh]">
+                  <div className="min-h-[60vh] pt-4">
                     <AnimatePresence mode="wait">
-                      {viewMode === 'edit' && (
+                      {viewMode === 'edit' ? (
                         <motion.div
                           key="edit"
                           initial={{ opacity: 0, y: 10 }}
@@ -288,6 +286,7 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                           transition={{ duration: 0.3 }}
                         >
                           <textarea
+                            ref={textareaRef}
                             value={content}
                             onChange={(e) => handleContentChange(e.target.value)}
                             placeholder="Start writing something amazing..."
@@ -295,41 +294,16 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                             autoFocus
                           />
                         </motion.div>
-                      )}
-
-                      {viewMode === 'preview' && (
+                      ) : (
                         <motion.div
                           key="preview"
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
                           transition={{ duration: 0.3 }}
-                          className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-black prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg"
+                          className="prose prose-invert prose-p:text-muted-foreground/90 prose-headings:text-foreground prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary max-w-none prose-lg"
                         >
                           <ReactMarkdown>{content || '*No content to preview yet.*'}</ReactMarkdown>
-                        </motion.div>
-                      )}
-
-                      {viewMode === 'split' && (
-                        <motion.div
-                          key="split"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex gap-12"
-                        >
-                          <div className="w-1/2">
-                            <textarea
-                              value={content}
-                              onChange={(e) => handleContentChange(e.target.value)}
-                              placeholder="Writing..."
-                              className="w-full min-h-[500px] resize-none bg-transparent border-none p-0 focus:outline-none text-lg leading-relaxed font-medium placeholder:text-muted-foreground/10 selection:bg-primary/20"
-                            />
-                          </div>
-                          <div className="w-px bg-white/5" />
-                          <div className="w-1/2 prose prose-invert prose-p:text-muted-foreground/80 prose-headings:text-foreground prose-sm max-w-none">
-                            <ReactMarkdown>{content}</ReactMarkdown>
-                          </div>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -340,157 +314,102 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
           </ScrollArea>
 
           {/* Floating Dock Toolbar */}
-          <AnimatePresence>
-            {!isFocusMode && (
-              <motion.div 
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 100, opacity: 0 }}
-                className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50"
-              >
-                <div className="flex items-center gap-1.5 p-2 rounded-2xl glass border-white/10 shadow-2xl">
-                  <TooltipProvider delayDuration={0}>
-                    {/* Mode Toggles */}
-                    <div className="flex items-center gap-1 px-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant={viewMode === 'edit' ? 'default' : 'ghost'} 
-                            size="icon" 
-                            onClick={() => setViewMode('edit')} 
-                            className="h-10 w-10 rounded-xl"
-                          >
-                            <Edit3 size={18} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Edit Mode</TooltipContent>
-                      </Tooltip>
+          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-50">
+            <div className="flex items-center gap-1.5 p-2 rounded-2xl glass border-white/10 shadow-2xl">
+              <TooltipProvider delayDuration={0}>
+                {/* Mode Toggles */}
+                <div className="flex items-center gap-1 px-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant={viewMode === 'edit' ? 'default' : 'ghost'} 
+                        size="icon" 
+                        onClick={() => setViewMode('edit')} 
+                        className="h-10 w-10 rounded-xl"
+                      >
+                        <Edit3 size={18} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit Mode</TooltipContent>
+                  </Tooltip>
 
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant={viewMode === 'split' ? 'default' : 'ghost'} 
-                            size="icon" 
-                            onClick={() => setViewMode('split')} 
-                            className="h-10 w-10 rounded-xl hidden md:flex"
-                          >
-                            <Columns size={18} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Split View</TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant={viewMode === 'preview' ? 'default' : 'ghost'} 
-                            size="icon" 
-                            onClick={() => setViewMode('preview')} 
-                            className="h-10 w-10 rounded-xl"
-                          >
-                            <Eye size={18} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Preview Mode</TooltipContent>
-                      </Tooltip>
-                    </div>
-
-                    <div className="w-px h-6 bg-white/10 mx-1" />
-
-                    {/* Format Tools */}
-                    {viewMode !== 'preview' && (
-                      <div className="flex items-center gap-1 px-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Bold size={18} /></Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Bold</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Italic size={18} /></Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Italic</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10"><List size={18} /></Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Bullet List</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    )}
-
-                    <div className="w-px h-6 bg-white/10 mx-1" />
-
-                    {/* Action Tools */}
-                    <div className="flex items-center gap-1 px-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={handleUndo} 
-                            disabled={!canUndo}
-                            className="h-10 w-10 rounded-xl disabled:opacity-20"
-                          >
-                            <Undo2 size={18} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Undo</TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={copyToClipboard} 
-                            className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
-                          >
-                            {copied ? <Check size={18} /> : <Copy size={18} />}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{copied ? 'Copied!' : 'Copy Content'}</TooltipContent>
-                      </Tooltip>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => setIsFocusMode(true)} 
-                            className="h-10 w-10 rounded-xl"
-                          >
-                            <Maximize2 size={18} />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Zen Mode</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant={viewMode === 'preview' ? 'default' : 'ghost'} 
+                        size="icon" 
+                        onClick={() => setViewMode('preview')} 
+                        className="h-10 w-10 rounded-xl"
+                      >
+                        <Eye size={18} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Preview Mode</TooltipContent>
+                  </Tooltip>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Focus Mode Exit */}
-          {isFocusMode && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="absolute top-12 left-1/2 -translate-x-1/2 z-50"
-            >
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsFocusMode(false)}
-                className="rounded-full bg-white/5 hover:bg-white/10 backdrop-blur-md text-[10px] font-bold uppercase tracking-[0.3em] px-6 border border-white/5"
-              >
-                Exit Zen Mode
-              </Button>
-            </motion.div>
-          )}
+                <div className="w-px h-6 bg-white/10 mx-1" />
+
+                {/* Format Tools */}
+                {viewMode === 'edit' && (
+                  <div className="flex items-center gap-1 px-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => insertMarkdown('**', '**')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Bold size={18} /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Bold</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => insertMarkdown('*', '*')} className="h-10 w-10 rounded-xl hover:bg-white/10"><Italic size={18} /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Italic</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => insertMarkdown('- ')} className="h-10 w-10 rounded-xl hover:bg-white/10"><List size={18} /></Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Bullet List</TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+
+                {viewMode === 'edit' && <div className="w-px h-6 bg-white/10 mx-1" />}
+
+                {/* Action Tools */}
+                <div className="flex items-center gap-1 px-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={handleUndo} 
+                        disabled={!canUndo}
+                        className="h-10 w-10 rounded-xl disabled:opacity-20"
+                      >
+                        <Undo2 size={18} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Undo</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={copyToClipboard} 
+                        className={cn("h-10 w-10 rounded-xl transition-all", copied && "text-green-500")}
+                      >
+                        {copied ? <Check size={18} /> : <Copy size={18} />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{copied ? 'Copied!' : 'Copy Content'}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
+            </div>
+          </div>
 
         </div>
 
@@ -577,14 +496,14 @@ export function NoteEditor({ noteId, isOpen, onClose }: NoteEditorProps) {
                         <div className="size-2 rounded-full bg-primary mt-1.5 shrink-0" />
                         <div>
                           <p className="text-sm font-bold">Last Modified</p>
-                          <p className="text-xs text-muted-foreground/60">{lastSaved?.toLocaleString() || 'Just now'}</p>
+                          <p className="text-xs text-muted-foreground/60">{formattedLastModified}</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3 opacity-40">
                         <div className="size-2 rounded-full bg-white/20 mt-1.5 shrink-0" />
                         <div>
                           <p className="text-sm font-bold">Note Created</p>
-                          <p className="text-xs text-muted-foreground/60">{new Date(note?.createdAt || Date.now()).toLocaleString()}</p>
+                          <p className="text-xs text-muted-foreground/60">{formattedFullCreatedAt}</p>
                         </div>
                       </div>
                     </div>
